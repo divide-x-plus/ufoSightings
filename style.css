@@ -1,0 +1,73 @@
+.span {
+  margin-left: 10%;
+  margin-right: 10%;
+  min-width: 750px;
+}
+
+h1, h2 {
+  font-family: 'Cutive Mono', monospace;
+}
+
+body { font-family: 'Alegreya Sans', Calibri, sans-serif; }
+
+/* path {
+  stroke-linejoin: round;
+} */
+
+#key {
+  display: inline;
+  float: left;
+  margin: 0;
+  width: 400px;
+}
+
+#reports {
+  display: inline;
+  margin: 0;
+  padding-top: 0px;
+}
+
+#yearText{
+  display: inline;
+}
+
+.polygons {
+  fill: none;
+  stroke: #273142;
+  stroke-width: 0.5px;
+  stroke-opacity: 0.45;
+}
+
+#map{
+    position: block;
+    width: 100%;
+    height: 450px;
+}
+
+div.tooltip {
+    border-top-left-radius: 2px;
+    border-top-right-radius: 2px;
+    border-bottom-right-radius: 2px;
+    border-bottom-left-radius: 2px;
+    text-indent: 20px;
+    width: auto;
+    padding: 0px 4px 0px 0px;
+    text-align: center;
+    font-style: thin;
+    font-variant-caps: normal;
+    font-weight: bold;
+    font-size: 11px;
+    line-height: 20px;
+    font-family: 'Helvetica Neue', Helvetica, sans-serif;
+    color: rgb(255, 255, 255);
+    background-size: 14px 14px;
+    background-color: black;
+    position: absolute;
+    opacity: 1;
+    z-index: 8675309;
+    cursor: pointer;
+    border: none;
+    -webkit-font-smoothing: antialiased;
+    background-position: 3px 50%;
+    background-repeat: no-repeat no-repeat;
+}

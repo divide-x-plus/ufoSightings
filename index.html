@@ -1,0 +1,390 @@
+<html>
+<head>
+	<script src="https://d3js.org/d3.v4.min.js"></script>
+	<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
+	<script src="http://cdn.leafletjs.com/leaflet-0.7/leaflet.js"></script>
+	<script type="text/javascript" src="us-states.js"></script>
+
+	<link rel="stylesheet" type="text/css" href="style.css">
+	<link rel="stylesheet" href="http://cdn.leafletjs.com/leaflet-0.7/leaflet.css"/>
+	<link rel="icon" type="image/png" href="./favicon.png">
+
+	<!-- Fonts -->
+	<link href="https://fonts.googleapis.com/css?family=Cutive+Mono" rel="stylesheet">
+	<link href="https://fonts.googleapis.com/css?family=Alegreya|Alegreya+Sans" rel\
+	="stylesheet">
+</head>
+
+<body>
+	<div class="span">
+		<!-- TODO: change the tiltle to be more appropriate  -->
+		<h1><b>UFO Sightings and Alcohol Prevalence in the U.S.</b></h1>
+
+		<!-- navigation panel to change years -->
+		<p id="yearText">Selected Year: 2002</p>
+		<button class="navButton" id="year2002">2002</button>
+		<button class="navButton" id="year2003">2003</button>
+		<button class="navButton" id="year2004">2004</button>
+		<button class="navButton" id="year2005">2005</button>
+		<button class="navButton" id="year2006">2006</button>
+		<button class="navButton" id="year2007">2007</button>
+		<button class="navButton" id="year2008">2008</button>
+		<button class="navButton" id="year2009">2009</button>
+		<button class="navButton" id="year2010">2010</button>
+		<button class="navButton" id="year2011">2011</button>
+		<button class="navButton" id="year2012">2012</button>
+
+		<!--- Code for Leaflet.js Maps -->
+		<div id="map">
+			<script>
+				// set up div for tooltip
+				var div = d3.select("body").append("div")
+				.attr("class", "tooltip")
+				.style("opacity", 0);
+
+				// instantiate map object to div #map
+				var map = new L.map("map", {
+					minZoom: 4,
+					maxZoom: 7,
+					center: [37.8,-96.9],
+					zoom: 4
+				});
+
+				// link to openstreetmap
+				var mapLink = '<a href="http://openstreetmap.org">OpenStreetMap</a>';
+
+				// add attribution to map
+				L.tileLayer('http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+						attribution: '&copy; ' + mapLink + ' Contributors',
+				}).addTo(map);
+
+				function loadMap() {
+					d3.csv(csv, function(data) {
+
+						d3.csv("alcohol.csv", function(alcoholData) {
+							var temp = alcoholData;
+
+							// Removes all layers, except map background
+							map.eachLayer(function (layer) {
+								if(layer._url != "http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"){
+									map.removeLayer(layer);
+								}
+							});
+
+							// link to geojson data for choropleth layer
+ 							L.geoJson(statesData, {style: style}).addTo(map);
+							map.on("viewreset moveend", update);
+
+							// quantize levels of alcohol consumption into a diverging sequence of colors
+							function getColor(d) {
+								return d > 70  ? '#BD0026' :
+									   d > 60  ? '#E31A1C' :
+									   d > 50  ? '#FC4E2A' :
+									   d > 40   ? '#FD8D3C' :
+									   d > 30   ? '#FEB24C' :
+									   d > 20   ? '#FED976' :
+												  '#FFEDA0'; //20 is the lightest color
+							}
+
+							function style(feature) {
+								var gateway = false;
+								var i = 0;
+								while(gateway == false){
+									if(String(feature.properties.name).trim()
+									== String(temp[i].State).trim()){
+										var stateColor = getColor(temp[i][year]);
+										gateway = true;
+									}
+									i++;
+								}
+								return {
+									fillColor: stateColor,
+									weight: 1,
+									opacity: 0.4,
+									color: 'grey',
+									dashArray: '1',
+									fillOpacity: 0.3
+								};
+							}
+
+							/* We simply pick up the SVG from the map object */
+							map._initPathRoot();
+							var svg = d3.select("#map").select("svg"),
+							g = svg.append("g").attr('class', 'leaflet-zoom-hide');
+
+							update();
+
+							function update() {
+								var positions = [];
+
+								/* Add a LatLng object to each item in the dataset */
+								data.forEach(function(d) {
+									d.LatLng = new L.LatLng(Number(d.latitude), Number(d["longitude "]));
+									positions.push({
+										x: map.latLngToLayerPoint(d.LatLng).x,
+										y: map.latLngToLayerPoint(d.LatLng).y
+									});
+								});
+
+								// remove points first
+								d3.selectAll(".point").remove();
+
+								var feature = g.selectAll("circle")
+								.data(data).enter()
+								.append("circle")
+								.attr("class", "point")
+								.style("opacity", 0.75)
+								.style("fill", "#09875f")
+								.attr("r", 4);
+
+								feature.attr("transform",
+								function(d) {
+									return "translate("+
+										map.latLngToLayerPoint(d.LatLng).x +","+
+										map.latLngToLayerPoint(d.LatLng).y +")";
+									}
+							); //end of update function
+
+							// add tooltips
+					    feature.on("mouseover", function(d){
+					      div
+					      .style("opacity", 0.9);
+
+					      div.html(d.city + ", " + d.state + "<br/>" + d.shape + "-shaped object")
+					      .style("left", (d3.event.pageX) + "px")
+					      .style("top", (d3.event.pageY) + "px");
+
+					      // accentuate mouseover-ed circle
+					      d3.select(this).style("stroke-width", "2px")
+					      .style("fill", "darkblue");
+					    })
+					    .on("mouseout", function() {
+					      div.transition().duration(1500)
+					      .style("opacity", 0);
+
+					      // remove dark highlights
+					      d3.select(this).style("stroke-width", "0.5px")
+					      .style("fill", "#09875f");
+					    });
+
+						} //end of csv alcohol
+
+						////////////////////////////////////////////////////////////////////
+						////////////////////////create comment section//////////////////////
+						////////////////////////////////////////////////////////////////////
+						function getCommentNo(){
+							var min = 0;
+							var max = data.length;
+							return Math.floor(Math.random() * (max - min + 1) + min);
+						}
+
+						function refreshComment(){
+							var comment = String(data[getCommentNo()].comments).trim();
+
+							// Ensures that selected comment does not have any charrefs/special
+							// characters that would look weird on the page.
+							while(comment.includes("&")){
+								comment = String(data[getCommentNo()].comments).trim();
+							}
+
+							var city = titleCase(String(data[getCommentNo()].city).trim());
+							var state = String(data[getCommentNo()].state).trim().toUpperCase();
+							var location = city + ", " + state;
+							d3.select("#location").append("text")
+							.text('Location: ' + location);
+
+							var dateFull = String(data[getCommentNo()].datetime).split(" ");
+							var dateTrunc = dateFull[0];
+							d3.select("#date").append("text")
+							.text('Date: ' + dateTrunc);
+
+							d3.select("#comment").append("text")
+							.text('Comment: "' + comment + '"');
+						}
+
+						refreshComment();
+
+						d3.select("#nextComment").on("click", function () {
+							d3.select("#reports").selectAll("p").text("");
+							refreshComment();
+						})
+
+					});
+				});
+			}
+			</script>
+		</div>
+
+		<div id="bottom">
+			<div id="key">
+				<svg height = "200" width = "400">
+				<script id = "mapKey">
+
+				var svg = d3.select("svg");
+
+				svg.append("text")
+				.attr("x", 15)
+				.attr("y", 20)
+				.attr("font-size", "15 px")
+				.text("% Pop. Drinking Any Alcohol")
+				.attr("fill", "#3a1f2e");
+
+				svg.append("circle")
+				.attr("r", 5)
+				.attr("cx", 20)
+				.attr("cy", 40)
+				.attr("fill", "#BD0026")
+				.attr("stroke", "#E8E8E8")
+				.attr("stroke-width", "1")
+				.attr("opacity", 0.4);
+
+				svg.append("text")
+				.attr("x", 40)
+				.attr("y", 45)
+				.attr("font-size", "10 px")
+				.text("> 70% ")
+				.attr("fill", "#3a1f2e");
+
+				svg.append("circle")
+				.attr("r", 5)
+				.attr("cx", 20)
+				.attr("cy", 60)
+				.attr("fill", "#E31A1C")
+				.attr("stroke", "#E8E8E8")
+				.attr("stroke-width", "1")
+				.attr("opacity", 0.4);
+
+				svg.append("text")
+				.attr("x", 40)
+				.attr("y", 65)
+				.attr("font-size", "10 px")
+				.text("> 60% ")
+				.attr("fill", "#3a1f2e");
+
+				svg.append("circle")
+				.attr("r", 5)
+				.attr("cx", 20)
+				.attr("cy", 80)
+				.attr("fill", "#FC4E2A")
+				.attr("stroke", "#E8E8E8")
+				.attr("stroke-width", "1")
+				.attr("opacity", 0.4);
+
+				svg.append("text")
+				.attr("x", 40)
+				.attr("y", 85)
+				.attr("font-size", "10 px")
+				.text("> 50% ")
+				.attr("fill", "#3a1f2e");
+
+				svg.append("circle")
+				.attr("r", 5)
+				.attr("cx", 20)
+				.attr("cy", 100)
+				.attr("fill", "#FD8D3C")
+				.attr("stroke", "#E8E8E8")
+				.attr("stroke-width", "1")
+				.attr("opacity", 0.4);
+
+				svg.append("text")
+				.attr("x", 40)
+				.attr("y", 105)
+				.attr("font-size", "10 px")
+				.text("> 40% ")
+				.attr("fill", "#3a1f2e");
+
+				svg.append("circle")
+				.attr("r", 5)
+				.attr("cx", 20)
+				.attr("cy", 120)
+				.attr("fill", "#FEB24C")
+				.attr("stroke", "#E8E8E8")
+				.attr("stroke-width", "1")
+				.attr("opacity", 0.4);
+
+				svg.append("text")
+				.attr("x", 40)
+				.attr("y", 125)
+				.attr("font-size", "10 px")
+				.text("> 30% ")
+				.attr("fill", "#3a1f2e");
+
+				svg.append("circle")
+				.attr("r", 5)
+				.attr("cx", 20)
+				.attr("cy", 140)
+				.attr("fill", "#FED976")
+				.attr("stroke", "#E8E8E8")
+				.attr("stroke-width", "1")
+				.attr("opacity", 0.4);
+
+				svg.append("text")
+				.attr("x", 40)
+				.attr("y", 145)
+				.attr("font-size", "10 px")
+				.text("> 20% ")
+				.attr("fill", "#3a1f2e");
+
+				svg.append("circle")
+				.attr("r", 5)
+				.attr("cx", 200)
+				.attr("cy", 90)
+				.attr("fill", "#09875f")
+				.attr("stroke", "#E8E8E8")
+				.attr("stroke-width", "1")
+
+				svg.append("text")
+				.attr("x", 210)
+				.attr("y", 95)
+				.attr("font-size", "10 px")
+				.text("1 UFO Sighting")
+				.attr("fill", "#3a1f2e");
+				</script>
+			</div>
+
+			<!-- Selected Report Code -->
+			<div id="reports">
+			  <h2>Random UFO Sighting Comments</h2>
+			  <p id="date"></p>
+			  <p id="location"></p>
+			  <p id="comment"></p>
+			  <button id="nextComment">Next Sighting</button>
+			</div>
+
+		</div>
+
+		<script>
+		  // TitleCase function from http://stackoverflow.com/questions/32589197/capitalize-first-letter-of-each-word-in-a-string-javascript
+		  function titleCase(str) {
+		    var splitStr = str.toLowerCase().split(' ');
+		    for (var i = 0; i < splitStr.length; i++) {
+		       // You do not need to check if i is larger than splitStr length, as your for does that for you
+		       // Assign it back to the array
+		       splitStr[i] = splitStr[i].charAt(0).toUpperCase() + splitStr[i].substring(1);
+		   }
+		   // Directly return the joined string
+		   return splitStr.join(' ');
+		}
+		</script>
+
+		<!-- Change year/navbar code -->
+		<script>
+		var year = 2002; //Sets the default year of display to 2002
+		var csv = "UFO_" + year + ".csv";
+		loadMap();
+
+		d3.selectAll(".navButton").on("click", function () {
+			year = String(this.id).slice(4);
+			csv = "UFO_" + year + ".csv";
+			d3.selectAll(".point").remove();
+			loadMap();
+
+			// Refreshes comments to new random based on correct year
+			d3.select("#reports").selectAll("p").text("");
+			d3.select("#yearText").text("Selected Year: " + year);
+		})
+
+		</script>
+	</div>
+</body>
+</html>
